@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:qurademy_hybrid/utils/colors.dart';
-import 'dart:ui';
 import 'package:qurademy_hybrid/widgets/onboarding_content.dart';
+import 'package:qurademy_hybrid/pages/role_selection_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key});
@@ -72,10 +73,18 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 width: double.infinity,
                 height: 65,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (_pageIndex == 2) {
-                      // Navigate to home page or sign-up
-                      print('Get Started');
+                      // Mark onboarding as seen and navigate to role selection
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setBool('hasSeenOnboarding', true);
+                      if (!mounted) return;
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const RoleSelectionPage(),
+                        ),
+                      );
                     } else {
                       _pageController.nextPage(
                         duration: const Duration(milliseconds: 300),

@@ -22,7 +22,7 @@ class OnboardingContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Quraademy',
+            'Qurademy',
             textAlign: TextAlign.left,
             style: const TextStyle(
               fontSize: 25,

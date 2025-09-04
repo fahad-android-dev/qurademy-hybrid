@@ -19,6 +19,8 @@ android {
         jvmTarget = JavaVersion.VERSION_11.toString()
     }
 
+
+
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.qurademy_hybrid"
@@ -31,12 +33,17 @@ android {
     }
 
     buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
-        }
+    release {
+        isMinifyEnabled = true
+        isShrinkResources = true
+        proguardFiles(
+            getDefaultProguardFile("proguard-android-optimize.txt"),
+            "proguard-rules.pro"
+        )
+        signingConfig = signingConfigs.getByName("debug")
     }
+}
+
 }
 
 flutter {
