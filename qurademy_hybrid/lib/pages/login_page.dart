@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:qurademy_hybrid/services/auth_service.dart';
 import 'package:qurademy_hybrid/utils/colors.dart';
 import 'package:qurademy_hybrid/pages/registration_page.dart';
 import 'package:qurademy_hybrid/pages/student_home_page.dart';
 import 'package:qurademy_hybrid/pages/teacher_home_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
-  final String role; // 'student' or 'teacher'
+  final String role;
   const LoginPage({super.key, required this.role});
 
   @override
@@ -17,6 +19,7 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscure = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -28,16 +31,68 @@ class _LoginPageState extends State<LoginPage> {
   String get _displayRole =>
       widget.role[0].toUpperCase() + widget.role.substring(1);
 
-  void _onLogin() {
+  Future<void> _onLogin() async {
     if (_formKey.currentState?.validate() ?? false) {
-      // TODO: integrate real auth; for now route to role-based home
-      final Widget destination = widget.role == 'teacher'
-          ? const TeacherHomePage()
-          : const StudentHomePage();
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => destination),
-      );
+      setState(() => _isLoading = true);
+
+      try {
+        final response = await AuthService.login(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
+
+        if (mounted) {
+          if (response['success'] == true) {
+            // Determine user type from API response
+            final data = response['data'] as Map<String, dynamic>? ?? {};
+            final dynamic topType = data['user_type'] ?? data['type'];
+            final dynamic nestedType = (data['user'] is Map)
+                ? (data['user']['user_type'] ?? data['user']['type'])
+                : null;
+            final String userType = (topType ?? nestedType ?? '')
+                .toString()
+                .toUpperCase();
+
+            final bool isTeacher = userType == 'T' || widget.role == 'teacher';
+            final Widget destination = isTeacher
+                ? const TeacherHomePage()
+                : const StudentHomePage();
+
+            // Persist login state and role for auto-login on next app start
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setBool('isLoggedIn', true);
+            await prefs.setString('userRole', isTeacher ? 'teacher' : 'student');
+
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (_) => destination),
+              (route) => false,
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  response['message'] ?? 'Login failed. Please try again.',
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('An error occurred. Please try again later.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
     }
   }
 
@@ -219,7 +274,7 @@ class _LoginPageState extends State<LoginPage> {
             SizedBox(
               height: 65,
               child: ElevatedButton(
-                onPressed: _onLogin,
+                onPressed: _isLoading ? null : _onLogin,
                 style: ElevatedButton.styleFrom(
                   elevation: 0,
                   padding: EdgeInsets.zero,
@@ -246,16 +301,25 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ],
                   ),
-                  child: const Center(
-                    child: Text(
-                      'Log in',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontFamily: 'Montserrat',
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+                  child: Center(
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'Log in',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                   ),
                 ),
               ),

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:qurademy_hybrid/utils/colors.dart';
 import 'package:qurademy_hybrid/pages/teacher_course_list_page.dart';
 import 'package:qurademy_hybrid/pages/teacher_create_course_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:qurademy_hybrid/pages/role_selection_page.dart';
 
 class TeacherHomePage extends StatefulWidget {
   const TeacherHomePage({super.key});
@@ -13,6 +15,105 @@ class TeacherHomePage extends StatefulWidget {
 class _TeacherHomePageState extends State<TeacherHomePage> {
   int _currentIndex = 0;
   int _selectedFilter = 0;
+
+  // 🔹 Show logout confirmation dialog
+  Future<void> _showLogoutDialog() async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Container(
+                height: 40,
+                width: 40,
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.logout_rounded,
+                  color: Colors.red.shade600,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Logout',
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+            'Are you sure you want to logout? You will need to login again to access your instructor account.',
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontWeight: FontWeight.w500,
+              color: Colors.grey,
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Colors.red, Colors.redAccent],
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: TextButton(
+                child: const Text(
+                  'Logout',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'Montserrat',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _performLogout();
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // 🔹 Actual logout function
+  Future<void> _performLogout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('isLoggedIn');
+    await prefs.remove('userRole');
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -153,6 +254,24 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
+              Container(
+                height: 44,
+                width: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: IconButton(
+                  onPressed: _showLogoutDialog, // 🔥 Changed to show dialog
+                  tooltip: 'Logout',
+                  icon: const Icon(
+                    Icons.logout_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -259,7 +378,11 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
     );
   }
 
-  Widget _sectionHeader({required String title, String? actionText, VoidCallback? onPressed}) {
+  Widget _sectionHeader({
+    required String title,
+    String? actionText,
+    VoidCallback? onPressed,
+  }) {
     return Row(
       children: [
         Text(
@@ -387,9 +510,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => const TeacherCreateCoursePage(),
-            ),
+            MaterialPageRoute(builder: (_) => const TeacherCreateCoursePage()),
           );
         },
         backgroundColor: Colors.transparent,

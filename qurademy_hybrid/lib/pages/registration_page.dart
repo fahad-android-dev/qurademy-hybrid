@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:qurademy_hybrid/pages/role_selection_page.dart';
+import 'package:qurademy_hybrid/services/auth_service.dart';
 import 'package:qurademy_hybrid/utils/colors.dart';
 import 'package:qurademy_hybrid/pages/login_page.dart';
+import 'package:qurademy_hybrid/pages/role_selection_page.dart';
 
 class RegistrationPage extends StatefulWidget {
   final String role; // 'student' or 'teacher'
@@ -13,12 +16,15 @@ class RegistrationPage extends StatefulWidget {
 class _RegistrationPageState extends State<RegistrationPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void dispose() {
     _nameController.dispose();
+    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -27,13 +33,55 @@ class _RegistrationPageState extends State<RegistrationPage> {
   String get _displayRole =>
       widget.role[0].toUpperCase() + widget.role.substring(1);
 
-  void _onRegister() {
+  Future<void> _onRegister() async {
     if (_formKey.currentState?.validate() ?? false) {
-      // TODO: Integrate real registration
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Registering as ${widget.role}...')),
-      );
-      Navigator.pop(context); // go back to login
+      setState(() => _isLoading = true);
+      try {
+        final result = await AuthService.register(
+          fullName: _nameController.text.trim(),
+          username: _usernameController.text.trim(),
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+          userType: widget.role == 'teacher' ? 'T' : 'S',
+        );
+
+        if (!mounted) return;
+
+        if (result['success'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                result['message'] ?? 'Registration successful. Please log in.',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+            (route) => false,
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                result['message'] ?? 'Registration failed. Please try again.',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('An error occurred. Please try again later.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -149,6 +197,29 @@ class _RegistrationPageState extends State<RegistrationPage> {
               ),
               const SizedBox(height: 12),
               TextFormField(
+                controller: _usernameController,
+                decoration: InputDecoration(
+                  labelText: 'Username',
+                  prefixIcon: const Icon(Icons.account_circle_outlined),
+                  filled: true,
+                  fillColor: Colors.white,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: AppColors.primaryColor,
+                      width: 1.2,
+                    ),
+                  ),
+                ),
+                validator: (v) =>
+                    (v == null || v.isEmpty) ? 'Username required' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
                 controller: _emailController,
                 decoration: InputDecoration(
                   labelText: 'Email',
@@ -205,7 +276,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
               SizedBox(
                 height: 65,
                 child: ElevatedButton(
-                  onPressed: _onRegister,
+                  onPressed: _isLoading ? null : _onRegister,
                   style: ElevatedButton.styleFrom(
                     padding: EdgeInsets.zero,
                     elevation: 0,
@@ -232,16 +303,25 @@ class _RegistrationPageState extends State<RegistrationPage> {
                         ),
                       ],
                     ),
-                    child: const Center(
-                      child: Text(
-                        'Create account',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontFamily: 'Montserrat',
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                    child: Center(
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'Create account',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontFamily: 'Montserrat',
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                     ),
                   ),
                 ),

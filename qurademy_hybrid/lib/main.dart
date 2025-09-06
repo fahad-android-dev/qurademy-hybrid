@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:qurademy_hybrid/pages/onboarding_page.dart';
 import 'package:qurademy_hybrid/pages/role_selection_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:qurademy_hybrid/pages/student_home_page.dart';
+import 'package:qurademy_hybrid/pages/teacher_home_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -28,27 +30,42 @@ class MyApp extends StatelessWidget {
 class RootDecider extends StatelessWidget {
   const RootDecider({super.key});
 
-  Future<bool> _hasSeenOnboarding() async {
+  // Decide which widget to show at app start
+  Future<Widget> _decideStartWidget() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('hasSeenOnboarding') ?? false;
+    final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    final String role = prefs.getString('userRole') ?? '';
+    final bool hasSeenOnboarding =
+        prefs.getBool('hasSeenOnboarding') ?? false;
+
+    if (isLoggedIn) {
+      // Route directly to the correct home page
+      if (role.toLowerCase() == 'teacher') {
+        return const TeacherHomePage();
+      } else {
+        return const StudentHomePage();
+      }
+    }
+
+    // Not logged in: keep existing flow (onboarding -> role selection)
+    if (hasSeenOnboarding) {
+      return const RoleSelectionPage();
+    } else {
+      return const OnboardingPage();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<bool>(
-      future: _hasSeenOnboarding(),
+    return FutureBuilder<Widget>(
+      future: _decideStartWidget(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        final seen = snapshot.data ?? false;
-        if (seen) {
-          return const RoleSelectionPage();
-        } else {
-          return const OnboardingPage();
-        }
+        return snapshot.data ?? const OnboardingPage();
       },
     );
   }
